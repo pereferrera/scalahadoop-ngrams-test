@@ -1,0 +1,21 @@
+<ivysettings>
+
+  <properties file="conf/project.properties"/>
+  <settings defaultResolver='chain-resolver' />
+        
+  <resolvers>
+  
+    <ibiblio name='central' root='http://repo1.maven.org/maven2/' m2compatible='true' checkconsistency="false"/>
+
+ <!-- Cloudera repo -->
+
+    <ibiblio name="cloudera" m2compatible="true" 
+        pattern="[organisation]/[module]/[revision]/[artifact]-[revision].[ext]" 
+        root="https://repository.cloudera.com/content/repositories/releases/" checkconsistency="false"/>
+                	
+    <chain name="chain-resolver" checkmodified="true" returnFirst="true">
+     	<resolver ref='central'/>
+     	<resolver ref='cloudera'/>
+    </chain>
+  </resolvers>
+</ivysettings>

@@ -1,0 +1,230 @@
+<project name="${project.name}" default="jar" xmlns:ivy="antlib:org.apache.ivy.ant"> 
+
+    <property file="build.properties" />
+
+	<property name="ivy.install.version" value="2.1.0-rc1" /> 
+	<property name="ivy.jar.dir" value="${basedir}/ivy" /> 
+	<property name="ivy.jar.file" value="${ivy.jar.dir}/ivy.jar" /> 
+	
+	<property name="conf.dir" value="conf" />
+    <property name="build.dir" value="build" /> 
+    <property name="src.dir" value="src" /> 
+	<property name="lib.dir" value="lib" />
+	<property name="test.dir" value="test" />
+	<property name="dist.dir" value="dist" />
+	<property name="integration.dir" value="integration" />
+	<property name="reports.dir" value="reports" />
+    
+	<property name="project.properties" value="${conf.dir}/project.properties" />
+	<loadproperties srcfile="${project.properties}"/>
+		
+	<property name="scala-library.jar" value="lib/scala-library-2.8.1.jar"/>		
+	<property name="scala-compiler.jar" value="lib/scala-compiler-2.8.1.jar"/>		
+	
+	<taskdef resource="scala/tools/ant/antlib.xml">
+	  <classpath>
+	    <pathelement location="${scala-library.jar}"   />
+	    <pathelement location="${scala-compiler.jar}"   />
+	  </classpath>
+	</taskdef>
+		
+    <target name="download-ivy" unless="skip.download"> 
+    	<mkdir dir="${ivy.jar.dir}"/> 
+		<!-- download Ivy from web site so that it can be used even without any special installation --> 
+		<echo message="installing ivy..."/> 
+    	<get src="http://repo1.maven.org/maven2/org/apache/ivy/ivy/${ivy.install.version}/ivy-${ivy.install.version}.jar"
+    		 dest="${ivy.jar.file}" usetimestamp="true"/> 
+    </target> 
+    
+    <!-- ================================= 
+          target: install-ivy         
+	        this target is not necessary if you put ivy.jar in your ant lib directory
+	        if you already have ivy in your ant lib, you can simply remove this
+	        target and the dependency the 'go' target has on it
+         ================================= --> 
+    <target name="install-ivy" depends="download-ivy" description="--> install ivy"> 
+    	<!-- try to load ivy here from local ivy dir, in case the user has not already dropped
+    	      it into ant's lib dir (note that the latter copy will always take precedence).
+    	      We will not fail as long as the ivy jar is in at least one of ant's lib dir or 
+    	      the local lib dir. --> 
+    	<path id="ivy.lib.path"> 
+    	    <pathelement location="${ivy.jar.file}"/> 
+    	</path> 
+    	<taskdef resource="org/apache/ivy/ant/antlib.xml"
+    	          uri="antlib:org.apache.ivy.ant" classpathref="ivy.lib.path"/> 
+    </target>    
+	
+    <!-- ================================= 
+          target: clean              
+         ================================= --> 
+    <target name="clean" description="--> clean the project"> 
+        <delete includeemptydirs="true" quiet="true"> 
+            <fileset dir="${build.dir}" /> 
+    	</delete> 
+    </target> 
+	
+    <!-- ================================= 
+          target: clean-ivy              
+         ================================= --> 
+	<target name="clean-ivy" description="--> clean the ivy installation"> 
+		<delete dir="${ivy.jar.dir}"/> 
+	</target> 
+	
+    <!-- ================================= 
+          target: clean-cache              
+         ================================= --> 
+	<target name="clean-cache" depends="install-ivy" 
+			description="--> clean the ivy cache"> 
+		<ivy:cleancache /> 
+	</target> 
+	
+    <!-- ================================= 
+          target: resolve              
+         ================================= -->
+    <target name="resolve" description="--> retrieve dependencies with ivy" depends="install-ivy">
+        <delete includeemptydirs="true" quiet="true"> 
+            <fileset dir="${lib.dir}" /> 
+		</delete>
+    	<ivy:resolve refresh="true" changing="true"/>
+    	<ivy:retrieve/>
+    </target>
+	
+	<!-- ================================= 
+          classpath            
+         ================================= -->
+	<!-- define the common classpath for compiling and running stuff -->
+	<path id="common.classpath">
+		<pathelement location="${scala-library.jar}" />
+		<fileset dir="${lib.dir}" casesensitive="yes">
+			<include name="**/*"/>
+		</fileset>
+		<pathelement location="${conf.dir}" />
+	</path>
+			
+	<!-- ================================= 
+          target: compile source            
+         ================================= -->
+	<target name="compile" description="--> compile the source code" depends="compile-scala">
+		<mkdir dir="${build.dir}"/>
+		<mkdir dir="${src.dir}"/>
+		<mkdir dir="${test.dir}"/>
+		<mkdir dir="${integration.dir}"/>
+		<javac srcdir="${src.dir}:${test.dir}:${integration.dir}" destdir="${build.dir}" debug="on">
+			<classpath refid="common.classpath"/>
+		</javac>
+	</target>
+
+	<!-- ================================= 
+          target: javadoc            
+         ================================= -->
+	<target name="javadoc" description="--> generate javadoc for the project">
+	  <javadoc package="com.datasalt" sourcepath="${src.dir}" defaultexcludes="yes"
+	           destdir="docs/api"
+	           author="true"
+	           version="true"
+	           use="true"
+	           windowtitle="${project.name}">
+		<classpath refid="common.classpath"/>
+        <doctitle><![CDATA[<h1>${project.name}</h1>]]></doctitle>
+	    <bottom><![CDATA[<i>(c) Datasalt 2011</i>]]></bottom>
+	  </javadoc>
+	</target>
+	
+	<!-- ================================= 
+          target: jar
+         ================================= -->
+	<target name="jar" description="--> create jar" depends="compile">
+		<copy file="scala/ngram-totals.txt" tofile="${build.dir}/ngram-totals.txt"/>
+		<jar destfile="${jar.name}.jar" basedir="${build.dir}">
+		    <manifest>
+		      <attribute name="Main-Class" value="${main.class}"/>
+		    </manifest>
+		</jar>
+		<jar destfile="${jar.name}.jar" basedir="." update="true">
+			<include name="lib/*" />
+			<include name="conf/*" />
+		</jar>
+	</target>
+	
+	<!-- ================================= 
+          target: run something
+         ================================= -->
+	<target name="run" description="--> launch a java class" depends="compile">
+		<java classname="${java.class}" fork="false">
+			<classpath>
+				<pathelement location="${build.dir}"/>
+			</classpath>
+			<classpath refid="common.classpath"/>
+			<arg line="${java.args}"/>
+		</java>
+	</target>
+	
+	<!-- ================================= 
+	      target: unit test              
+	     ================================= -->
+	<target name="test" depends="compile">
+		<mkdir dir="${reports.dir}"/>
+		<junit printsummary="yes" haltonfailure="yes">
+	  		<classpath refid="common.classpath"/>
+			<classpath>
+				<pathelement location="${build.dir}"/>
+				<pathelement location="${src.dir}"/>
+			</classpath>
+			<formatter type="plain"/>
+		    <batchtest fork="yes" todir="${reports.dir}">
+		    	<fileset dir="${test.dir}">
+		      		<include name="**/Test*.java"/>
+		      		<exclude name="**/AllTests.java"/>
+		    		<exclude name="**/*.properties"/>
+		    		<exclude name="**/*.xml"/>
+		    	</fileset>
+ 		   </batchtest>
+		</junit>
+	</target>
+	
+	<!-- ================================= 
+	      target: integration test              
+	     ================================= -->
+	<target name="i-test" depends="compile">
+		<mkdir dir="${reports.dir}-integration"/>
+		<junit printsummary="yes" haltonfailure="yes">
+	  		<classpath refid="common.classpath"/>
+			<classpath>
+				<pathelement location="${build.dir}"/>
+			</classpath>
+			<formatter type="plain"/>
+		    <batchtest fork="yes" todir="${reports.dir}-integration">
+		    	<fileset dir="${integration.dir}">
+		      		<include name="**/ITest*.java"/>
+		      		<exclude name="**/AllTests.java"/>
+		    		<exclude name="**/*.properties"/>
+		    		<exclude name="**/*.xml"/>
+		    	</fileset>
+ 		   </batchtest>
+		</junit>	
+	</target>
+	
+	<!-- =================================
+          target: compile Scala
+         ================================= -->
+	<target name="compile-scala">
+		<mkdir dir="${build.dir}"/>	
+		<javac srcdir="scala" destdir="${build.dir}" debug="on">
+			<classpath refid="common.classpath"/>
+		    <include name="**/*.java" />
+		</javac>
+		<scalac srcdir="scala" destdir="${build.dir}" classpathref="common.classpath">
+	      <include name="**/*.scala" />
+	    </scalac>
+	</target>
+	
+	<!-- =================================
+          target: Fast-compile Scala
+         ================================= -->
+	<target name="compile-scala-fast">
+		<mkdir dir="${build.dir}"/>	
+		<fsc srcdir="scala" destdir="${build.dir}" classpathref="common.classpath">
+	      <include name="**/*.scala" />
+	    </fsc>
+	</target>
+</project>

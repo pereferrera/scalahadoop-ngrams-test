@@ -1,0 +1,12 @@
+<ivy-module version="2.0">
+    <info organisation="com.datasalt" module="${project.name}" revision="${project.revision}"/>
+    <dependencies>		
+    	<!-- Cloudera's Hadoop -->
+    	<dependency org="org.apache.hadoop" name="hadoop-core" rev="0.20.2-cdh3u0" conf="*->*,!sources,!javadoc"/>
+				
+		<!-- Scala -->
+		<dependency org="org.scala-lang" name="scala-library" rev="2.8.1" conf="*->*,!sources,!javadoc"/>
+		<dependency org="org.scala-lang" name="scala-compiler" rev="2.8.1" conf="*->*,!sources,!javadoc"/>		
+
+    </dependencies>
+</ivy-module>
