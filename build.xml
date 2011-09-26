@@ -207,7 +207,7 @@
 	<!-- =================================
           target: compile Scala
          ================================= -->
-	<target name="compile-scala">
+	<target name="compile-scala" depends="resolve">
 		<mkdir dir="${build.dir}"/>	
 		<javac srcdir="scala" destdir="${build.dir}" debug="on">
 			<classpath refid="common.classpath"/>

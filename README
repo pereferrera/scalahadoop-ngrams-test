@@ -1,0 +1,6 @@
+This is a small experiment that uses ScalaHadoop to crunch the Google N-Grams, trying to find words whose importance boomed significantly in a period of 5 or less years.
+
+To build it, execute "ant resolve" and then "ant". You need to resolve first in order to have scala's ant tasks in the classpath.
+You can then execute it with "hadoop jar scala-test.jar". You can provide input files like the ones in http://ngrams.googlelabs.com/datasets. The file with the total counts for each year is already present in src/.
+
+Should you find something not working as expected or should you have any doubt or question, please write to pere[at]datasalt.com
